@@ -4,8 +4,9 @@ import { EmailAddress, WebhookEvent } from "@clerk/nextjs/server";
 
 import User from "@/app/Models/UserSchema";
 import connect from "@/app/lib/connect";
+import { NextResponse, NextRequest } from "next/server"; // Importa NextRequest
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) { // Cambia a NextRequest
   const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 
   if (!WEBHOOK_SECRET) {
@@ -20,9 +21,7 @@ export async function POST(req: Request) {
   const svix_signature = headerPayload.get("svix-signature");
 
   if (!svix_id || !svix_timestamp || !svix_signature) {
-    return new Response("Error occurred -- no svix headers", {
-      status: 400,
-    });
+    return NextResponse.json({ error: "No svix headers found" }, { status: 400 });
   }
 
   const payload = await req.json();
@@ -40,9 +39,7 @@ export async function POST(req: Request) {
     }) as WebhookEvent;
   } catch (err) {
     console.error("Error verifying webhook:", err);
-    return new Response("Error occurred", {
-      status: 400,
-    });
+    return NextResponse.json({ error: "Error verifying webhook" }, { status: 400 });
   }
 
   const { id } = evt.data;
@@ -61,11 +58,12 @@ export async function POST(req: Request) {
       console.log("User created");
     } catch (error) {
       console.error("Error creating user:", error);
+      return NextResponse.json({ error: "Error creating user" }, { status: 500 });
     }
   }
 
   console.log(`Webhook with an ID of ${id} and type of ${eventType}`);
   console.log("Webhook body:", body);
 
-  return new Response("Webhook processed successfully", { status: 200 });
+  return NextResponse.json({ message: "Webhook processed successfully" }, { status: 200 });
 }

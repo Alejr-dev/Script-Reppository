@@ -1,8 +1,8 @@
 import connect from "@/app/lib/connect";
-
 import Tag from "@/app/Models/TagSchema";
-import { NextResponse } from "next/server";
-export async function POST(req: Request) {
+import { NextResponse, NextRequest } from "next/server"; // Importa NextRequest
+
+export async function POST(req: NextRequest) { // Cambia a NextRequest
   try {
     const { name, clerkUserId } = await req.json();
 
@@ -17,85 +17,69 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ tags: savedTag });
   } catch (error) {
-    console.log(error);
-
-    return NextResponse.json({ error: error }, { status: 400 });
+    console.error("Error creating tag:", error);
+    return NextResponse.json({ error: "An error occurred while creating the tag." }, { status: 400 });
   }
 }
 
-export async function GET(req: any) {
+export async function GET(req: NextRequest) { // Cambia a NextRequest
   try {
     const clerkId = req.nextUrl.searchParams.get("clerkId");
     await connect();
     const tags = await Tag.find({ clerkUserId: clerkId });
-    return NextResponse.json({ tags: tags });
+    return NextResponse.json({ tags });
   } catch (error) {
-    return NextResponse.json({ error: error }, { status: 400 });
+    console.error("Error fetching tags:", error);
+    return NextResponse.json({ error: "An error occurred while fetching tags." }, { status: 400 });
   }
 }
 
-export async function PUT(request: any) {
+export async function PUT(req: NextRequest) { // Cambia a NextRequest
   try {
-    const tagId = request.nextUrl.searchParams.get("tagId");
-    const { name, clerkUserId } = await request.json();
+    const tagId = req.nextUrl.searchParams.get("tagId");
+    const { name, clerkUserId } = await req.json();
 
     if (!tagId) {
-      return NextResponse.json(
-        { message: "tag ID is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "Tag ID is required" }, { status: 400 });
     }
 
-    // Connect to the database
     await connect();
 
-    // Find the snippet by snippet and update it
     const updatedTag = await Tag.findOneAndUpdate(
       { _id: tagId },
-      {
-        $set: {
-          name,
-          clerkUserId,
-        },
-      },
-      { returnDocument: "after" } // Return the updated document
+      { $set: { name, clerkUserId } },
+      { new: true } // Retorna el documento actualizado
     );
 
-    console.log(updatedTag);
+    if (!updatedTag) {
+      return NextResponse.json({ message: "Tag not found" }, { status: 404 });
+    }
 
-    return NextResponse.json({
-      note: updatedTag,
-    });
+    return NextResponse.json({ tag: updatedTag });
   } catch (error) {
     console.error("Error updating the tag:", error);
-    return NextResponse.json({ status: 500 });
+    return NextResponse.json({ error: "An error occurred while updating the tag." }, { status: 500 });
   }
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE(req: NextRequest) { // Cambia a NextRequest
   try {
-    const url = new URL(request.url);
+    const url = new URL(req.url);
     const tagId = url.searchParams.get("tagId");
 
     if (!tagId) {
-      return NextResponse.json(
-        { message: "tagId is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "tagId is required" }, { status: 400 });
     }
 
     const tagToDelete = await Tag.findOneAndDelete({ _id: tagId });
 
     if (!tagToDelete) {
-      return NextResponse.json({ message: "tag not found" }, { status: 404 });
+      return NextResponse.json({ message: "Tag not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ message: "tag deleted successfully" });
+    return NextResponse.json({ message: "Tag deleted successfully" });
   } catch (error) {
-    console.error("Error deleting tag:", error); // Log the error for debugging
-    return NextResponse.json(
-      { message: "Failed to delete tag" },
-      { status: 500 }
-    );
+    console.error("Error deleting tag:", error);
+    return NextResponse.json({ error: "Failed to delete tag" }, { status: 500 });
   }
 }
